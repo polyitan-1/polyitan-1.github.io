@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>L3G4200</title>
+	<script>
+	function process() {
+		var input = document.getElementById("input").value.split(", ");
+		var div = document.getElementById("results");
+		div.appendChild(document.createElement("hr"));
+		
+		if (parseInt("0x" + input[0]) != 1)
+			div.appendChild(document.createTextNode("wrong response"));
+		else if (parseInt("0x" + input[1]) != 3)
+			div.appendChild(document.createTextNode("wrong response"));
+		else if (parseInt("0x" + input[2]) != 12)
+			div.appendChild(document.createTextNode("wrong response"));
+		else
+		{
+			for (var i = 0; i < 3; ++i)
+			{
+				var b1 = parseInt("0x" + input[3 + i * 4 + 2]);
+				var b2 = parseInt("0x" + input[3 + i * 4 + 3]);
+				var b3 = parseInt("0x" + input[3 + i * 4 + 0]);
+				var b4 = parseInt("0x" + input[3 + i * 4 + 1]);
+				
+				var result = ((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
+				div.appendChild(document.createTextNode(result));
+				div.appendChild(document.createElement("br"));
+			}
+		}
+	}
+	</script>
+  </head>
+  <body>
+	<form action="javascript:void(0);">
+		Response:<br>
+		<input id="input" type="text">
+		<br>
+		<button onclick="process()">Process</button>
+		<div id="results"></div>
+	</form>
+  </body>
+</html>
