@@ -4,42 +4,145 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <title>L3G4200</title>
-	<script>
-	function process() {
-		var input = document.getElementById("input").value.split(", ");
-		var div = document.getElementById("results");
-		div.appendChild(document.createElement("hr"));
-		
-		if (parseInt("0x" + input[0]) != 1)
-			div.appendChild(document.createTextNode("wrong response"));
-		else if (parseInt("0x" + input[1]) != 3)
-			div.appendChild(document.createTextNode("wrong response"));
-		else if (parseInt("0x" + input[2]) != 12)
-			div.appendChild(document.createTextNode("wrong response"));
-		else
-		{
-			for (var i = 0; i < 3; ++i)
-			{
-				var b1 = parseInt("0x" + input[3 + i * 4 + 2]);
-				var b2 = parseInt("0x" + input[3 + i * 4 + 3]);
-				var b3 = parseInt("0x" + input[3 + i * 4 + 0]);
-				var b4 = parseInt("0x" + input[3 + i * 4 + 1]);
-				
-				var result = ((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
-				div.appendChild(document.createTextNode(result));
-				div.appendChild(document.createElement("br"));
-			}
-		}
-	}
-	</script>
+    <style>
+        #drop_zone {
+          border: 2px dashed #bbb;
+          -moz-border-radius: 5px;
+          -webkit-border-radius: 5px;
+          border-radius: 5px;
+          padding: 25px;
+          margin-bottom: 25px;
+          text-align: center;
+          font: 20pt bold 'Vollkorn';
+          color: #bbb;
+        }
+    </style>
+    <script>
+        function processL3G4200(content, result) {
+            var input = content.split(", ");
+
+            if (parseInt("0x" + input[0]) != 0x1)
+                return;
+            if (parseInt("0x" + input[1]) != 0x3)
+                return;
+            if (parseInt("0x" + input[2]) != 0xC)
+                return;
+            
+            var properties = { L3G4200_X: null, L3G4200_Y: null, L3G4200_Z: null };
+            var i = 0;
+            for (var p in properties)
+            {
+                var b1 = parseInt("0x" + input[3 + i * 4 + 2]);
+                var b2 = parseInt("0x" + input[3 + i * 4 + 3]);
+                var b3 = parseInt("0x" + input[3 + i * 4 + 0]);
+                var b4 = parseInt("0x" + input[3 + i * 4 + 1]);
+
+                result[p] =((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
+                ++i;
+            }
+        }
+
+        function processV_ACB(content, result) {
+            var input = content.split(", ");
+
+            if (parseInt("0x" + input[0]) != 0x2)
+                return;
+            if (parseInt("0x" + input[1]) != 0x3)
+                return;
+            if (parseInt("0x" + input[2]) != 0x2)
+                return;
+            
+            var b1 = parseInt("0x" + input[3]);
+            var b2 = parseInt("0x" + input[4]);
+            result.V_ACB = (b1 << 8) | b2;
+        }
+        
+        function processSun_tmp_C(content, result) {
+            var input = content.split(", ");
+
+            if (parseInt("0x" + input[0]) != 0x1)
+                return;
+            if (parseInt("0x" + input[1]) != 0x3)
+                return;
+            if (parseInt("0x" + input[2]) != 0x16)
+                return;
+            
+            var properties = { Sun_Tmp1_C: null, Sun_Tmp2_C: null, Sun_Tmp3_C: null, CPU_Tmp_C: null };
+            var i = 0;
+            for (var p in properties)
+            {
+                var b1 = parseInt("0x" + input[3 + i * 2 + 0]);
+                var b2 = parseInt("0x" + input[3 + i * 2 + 1]);
+
+                result[p] =((b1 << 8) | b2) * 0.1;
+                ++i;
+            }
+        }
+        
+        function handleFileSelect(evt) {
+            evt.stopPropagation();
+            evt.preventDefault();
+
+            var files = [].slice.call(evt.dataTransfer.files); // create array from FileList object
+            files.sort(function() {
+                return function(a, b) {
+                    return a.name.localeCompare()(b.name);
+                };
+            });
+            
+            var textArea = document.getElementById('result');
+            var result = new Object();
+            result.sessionStartedAt = null;
+            result.data = new Object();
+            for (var i = 0, f; f = files[i]; i++) {
+                if (!f.type.match('text/plain')) {
+                    continue;
+                }
+                var reader = new FileReader();
+
+                reader.onload = (function(theFile) {
+                                    return function(e) {
+                                                if (!result.sessionStartedAt)
+                                                    result.sessionStartedAt = theFile.lastModifiedDate ? theFile.lastModifiedDate.toISOString() : 'n/a';
+
+                                                if (theFile.name.match("L3G4200_response")) {
+                                                    processL3G4200(e.target.result, result.data);
+                                                }
+                                                else if (theFile.name.match("VACB_response")) {
+                                                    processV_ACB(e.target.result, result.data);
+                                                }
+                                                else if (theFile.name.match("Sun_tmp_C_response")) {
+                                                    processSun_tmp_C(e.target.result, result.data);
+                                                }
+                                                
+                                                textArea.value = JSON.stringify(result, null, 2);
+                                            }
+                                })(f);
+                reader.readAsText(f);
+            }
+        }
+
+        function handleDragOver(evt) {
+            evt.stopPropagation();
+            evt.preventDefault();
+            evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+        }
+
+        function onLoad() {
+            // Setup the dnd listeners.
+            var dropZone = document.getElementById('drop_zone');
+            dropZone.addEventListener('dragover', handleDragOver, false);
+            dropZone.addEventListener('drop', handleFileSelect, false);
+        }
+    </script>
   </head>
-  <body>
-	<form action="javascript:void(0);">
-		Response:<br>
-		<input id="input" type="text">
-		<br>
-		<button onclick="process()">Process</button>
-		<div id="results"></div>
-	</form>
+  <body onload="onLoad()">
+    <div id="drop_zone">Drop files here</div>
+    <div>
+        <code>
+            <textarea id="result" autofocus="true" cols="80" rows="20">
+            </textarea>
+        </code>
+    </div>
   </body>
 </html>
